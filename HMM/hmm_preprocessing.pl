@@ -4,7 +4,7 @@
 # 1. $rc_filename - recombination file name (input)
 # 2. $sample_filename - sample file name (input)
 # 3. $founder_filename - founder file name (input)
-$ 4. $out_file_name - output file name (output, format "arm pos K N pb[0-7] rf")
+# 4. $out_file_name - output file name (output, format "arm pos K N pb[0-7] rf")
 
 use warnings;
 use strict;
@@ -29,7 +29,7 @@ my %chromosomes_index = (
 my $p_large = 0.995;
 my $p_small = 0.005;
 my %d2p = ( './.' => -1, '0/0' => $p_small, '1/1' => $p_large);
-			
+
 # Array of founder ids
 my @founders = ('F1','F2','F3','F4','F5','F6','F7','F8');
 my %foundkey = (
@@ -49,13 +49,13 @@ my $n_founders = scalar(@founders);
 # Make states hash with homozygous and heterozygous states and founders array (0,1)
 my %statecodes=();
 for (my $i=0; $i<$n_founders; ++$i)
-{ 
+{
 	$statecodes{$founders[$i].$founders[$i]}=[$founders[$i], $founders[$i]];
     for (my $j=0; $j < $n_founders; ++$j)
     {
     	if ($i < $j)
-    	{ 
-    		$statecodes{$founders[$i].$founders[$j]}=[$founders[$i], $founders[$j]];    
+    	{
+    		$statecodes{$founders[$i].$founders[$j]}=[$founders[$i], $founders[$j]];
     	}
 	}
 }
@@ -86,15 +86,15 @@ foreach my $arm (@chromosomes)
 {
     # read in the %positions data from a sample file per chromosome
     open(my $fh, '<:encoding(UTF-8)', $sample_filename) or die "Could not open file '$sample_filename' $!";
-    
+
     # init variables for each chromosome
     $seq_length = 0;
     $N = 0;
     $K = 0;
-    
+
     my $chrom_prev = "NA";
     my $pos_prev = -1;
-	
+
     my $of_name = $out_file_name . '_' . $arm;
     open(OUTFILE, ">$of_name");
 
@@ -102,7 +102,7 @@ foreach my $arm (@chromosomes)
     {
         chomp $row;
         my $first_char = substr $row, 0, 1;
-	
+
         # ignore first few lines with comments
         if($first_char eq "#")
         {
@@ -111,26 +111,26 @@ foreach my $arm (@chromosomes)
 
         #read in data from the sample file
         my ($chrom, $pos, $id, $ref, $alt, $qual, $filter, $info, $format, $last_field) = split ' ', $row;
-				
+
         # only process the right chromosom specified by $arm
         if($chrom ne $chromosomes_index{$arm})
         {
             next;
         }
-			
+
         # locate the corresponding record in the founder file
         while ($f_row = <$f_fh>)
         {
             chomp $f_row;
             my $f_first_char = substr $f_row, 0, 1;
             my $isSmall = 0;
-			
+
             # ignore lines starting with '#'
-            if ($f_first_char eq "#") 
+            if ($f_first_char eq "#")
             {
                 next;
-            } 
-		
+            }
+
             #read in data from founder file
             my ($f_chrom, $f_pos, $f_id, $f_ref, $f_alt, $f_qual, $f_filter, $f_info, $f_format, $v1, $v2, $v3, $v4, $v5, $v6, $v7, $v8) = split ' ', $f_row;
 
@@ -164,19 +164,19 @@ foreach my $arm (@chromosomes)
                     {
                         # break out the founder file to process the next record in the sample file
                         last;
-                    }               
-                    
+                    }
+
                     #calculate N and K from the sample file record
                     my ($GT, $PL, $AD) = split ':', $last_field;
                     my @ad = split ',', $AD;
-                    
+
                     $N = sum @ad;
-                    
+
                     if ($N == 0)
                     {
                         last; # N =0, missing data
                     }
-                    
+
                     if(scalar @ad <= 0)
                     {
                         print "Error: size of AD in sample file <= 0";
@@ -199,7 +199,7 @@ foreach my $arm (@chromosomes)
                         print "Error: wrong GT value in sample file with chromosome $arm! \n";
                         last;
                     }
-                    
+
                     # calculate the reference file value
                     my $rf = -1;
                     if ($chrom_prev eq $chrom)
@@ -212,11 +212,11 @@ foreach my $arm (@chromosomes)
                     }
                     $chrom_prev = $chrom;
                     $pos_prev = $pos;
-                    
+
                     $seq_length = $seq_length + 1;
-                    
+
                     print OUTFILE "$arm $pos $K $N $d2p{$v1} $d2p{$v2} $d2p{$v3} $d2p{$v4} $d2p{$v5} $d2p{$v6} $d2p{$v7} $d2p{$v8} ";
-                    
+
                     # finish the data calculation with the matching record, and break out the founder file to process the next record in the sample file
                     last;
                 }
@@ -240,14 +240,14 @@ foreach my $arm (@chromosomes)
             $previous = $current;
             $current  = tell $f_fh;
         }
-        
+
     } # end while (my $row = <$fh>) sample file
-    
+
     print OUTFILE "-1\n"; #last rf value
     close(OUTFILE);
 
     close $fh;
-	
+
     my $end = time();
     printf("Time: Finish processing %d records of chromosome %s in %.2f seconds \n", $seq_length, $arm, $end-$start);
     printf TIMEFILE "Time: Finish processing %d records of chromosome %s in %.2f seconds \n", $seq_length, $arm, $end-$start;
@@ -262,30 +262,30 @@ close(TIMEFILE);
 sub compute_rf
 {
     my ($pos1, $pos2, $arm) = @_;
-    
+
     if($pos1 >= $pos2)
     {
         print "Error: compute_rf(), pos1 ($pos1) >= pos2 ($pos2), arm = $arm \n";
         return -1;
     }
-    
+
     my $bin1 = 0;
     my $bin2 = 0;
     my $found_bin1 = 0;
     my $found_bin2 = 0;
     my $rf = 0;
     my $result = 0;
-    
+
     while($rc_index < $rc_size)
     {
         my($temp, $RF) = split ',', $rc_array[$rc_index];
         my($chr, $left, $right) = split /[:.\s]+/, $temp;
-                
+
         if (($chromosomes_index{$chr} eq $arm) and ($pos1 >= $left) and ($pos1 <= $right)) #found bin1
         {
             $found_bin1 = 1;
             $bin1 = $RF;
-            
+
             if(($pos2 >= $left) and ($pos2 <= $right)) #pos1 and pos2 in the same bin
             {
                 $found_bin2 = 1;
@@ -299,7 +299,7 @@ sub compute_rf
                 {
                     my($temp2, $RF2) = split ',', $rc_array[$rc_index];
                     my($chr2, $left2, $right2) = split /[:.\s]+/, $temp2;
-                    
+
                     if(($pos2 >= $left2) and ($pos2 <= $right2)) #found bin2
                     {
                         $found_bin2 = 1;
@@ -310,9 +310,9 @@ sub compute_rf
                     {
                         $rc_index = $rc_index + 1;
                     }
-                    
+
                 }
-                
+
                 if($found_bin2 == 1)
                 {
                     last;
@@ -324,13 +324,13 @@ sub compute_rf
             $rc_index = $rc_index + 1;
         }
     }
-    
+
     if (($found_bin1 == 0) or ($found_bin2 == 0))
     {
         print "Error: could not locate the right bins in the RC file, arm = $arm, pos1 = $pos1, pos2 = $pos2, found_bin1 = $found_bin1, found_bin2 = $found_bin2 \n";
         return -1;
     }
-    
+
     # compute the processed rf value and return it
     if ($bin1 eq $bin2)
     {
@@ -343,10 +343,10 @@ sub compute_rf
         my $midpt = ($pos1+$pos2)/2;
         $rf = $slope*$midpt + $intercept;
     }
-    
+
     # get distance between markers in bp
     my $dist = $pos2 - $pos1;
-    
+
     if ($arm == 5) # chromosome eq 'X'
     {
         $result = 1E-8 * $rf * 33 / 2 * $dist;
@@ -358,5 +358,3 @@ sub compute_rf
 
     return $result;
 }
-
-
